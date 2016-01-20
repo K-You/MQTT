@@ -1,0 +1,138 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Example of plotting live data with websockets and highcharts</title>
+
+
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script src="mqttws31.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+  //Settings
+  var MQTTBroker = "broker.mqttdashboard.com";
+  var MQTTPort = 8000;
+  var MQTTsubTopic = 'pb_kyou_home/#';
+
+
+  var chart;
+  var dataTopics = new Array();
+
+  //MQTT Broker
+  var client = new Paho.MQTT.Client(MQTTBroker, MQTTPort, "dashboard_pbKyou_"+parseInt(Math.random()*100,10));
+
+  client.onConnectionLost = onConnectionLost;
+  client.onMessageArrived = onMessageArrived;
+
+  //connect is at the bottom of the init function !
+
+  var options = {
+    timeout:3,
+    onSuccess : function(){
+      console.log("MQTT connected");
+      client.subscribe(MQTTsubTopic, {qos:1});
+    },
+    onFailure: function(message){
+      console.error("Connection failed, ERROR:"+message.errorMessage);
+      window.setTimeout(location.reload(), 20000); //w8 20secs before trying to connect again
+    }
+  };
+
+  function onConnectionLost(responseObject){
+    if(responseObject.errorCode !== 0){
+      console.log("onConnectionLost : "+responseObject.errorMessage);
+      //window.setTimeout(location.reload(), 20000); //w8 20secs before trying to connect again
+    }
+  }
+
+  function onMessageArrived(message){
+    console.log(message.destinationName, '', message.payloadString);
+
+    if(dataTopics.indexOf(message.destinationName)<0){ //check if new topic
+      dataTopics.push(message.destinationName); //add to the array
+      var y = dataTopics.indexOf(message.destinationName); //get the index
+
+      var newSeries = {
+        id: y,
+        name: message.destinationName,
+        data: []
+      };
+      chart.addSeries(newSeries);
+    }
+    var y = dataTopics.indexOf(message.destinationName);
+    var myEpoch = new Date().getTime();
+    var theNum = message.payloadString.replace(/^\D+/g,'');
+    var plotMQTT=[myEpoch, Number(theNum)];
+    if(isNumber(theNum)){
+      console.log('is a proper number');
+      plot(plotMQTT, y);
+    }
+  };
+
+  //check if a number is a real number
+  function isNumber(n){
+    return !isNaN(parseFloat(n)) && isFinite(n);
+  }
+
+  //function called at the loading of the webpage
+  function init(){
+    //Ty matbor for the head's up !  https://github.com/matbor/
+    Highcharts.setOptions({
+      global:{
+        useUTC:false
+      }
+    });
+
+    client.connect(options);
+
+  };
+
+  function plot(point, charNo){
+    console.log(point);
+    var series = chart.series[0],
+    shift = series.data.length > 20;
+    chart.series[charNo].addPoint(point, true, shift);
+  }
+
+ $(document).ready(function(){
+   chart = new Highcharts.Chart({
+     chart: {
+       renderTo: 'container',
+       defaultSeriesType: 'spline'
+     },
+     title: {
+       text: 'Plotting live websockets data from MQTT topics'
+     },
+     subtitle : {
+       text : 'broker: '+MQTTBroker+'| port: '+MQTTPort+'| topic: '+MQTTsubTopic
+     },
+     xAxis: {
+       type: 'datetime',
+       tickPixelInterval: 150,
+       maxZoom: 20*1000
+     },
+     yAxis: {
+       minPadding: 0.2,
+       maxPadding: 0.2,
+       title: {
+         text: 'Value',
+         margin: 80
+       }
+     },
+     series: []
+   });
+ });
+</script>
+
+<script src="http://code.highcharts.com/stock/highstock.js"></script>
+<script src="http://code.highcharts.com/stock/modules/exporting.js"></script>
+
+</head>
+<body>
+<body onload="init();"><!--Start the javascript ball rolling and connect to the mqtt broker-->
+
+
+
+<div id="container" style="height: 500px; min-width: 500px"></div><!-- this the placeholder for the chart-->
+
+	</body>
+</html>

@@ -64,7 +64,7 @@ public class Publisher {
 		Random rand = new Random();
 		
 		final int temperatureNumber = rand.nextInt((30-18)+1)+18;
-		final String temperature = temperatureNumber+"°C";
+		final String temperature = temperatureNumber+"";
 		
 		temperatureTopic.publish(new MqttMessage(temperature.getBytes()));
 		System.out.println("Data published " +temperature);
@@ -75,7 +75,7 @@ public class Publisher {
 		Random rand = new Random();
 		
 		final int brightnessNumber = rand.nextInt((100-0)+1)+0;
-		final String brightness = brightnessNumber+"%";
+		final String brightness = brightnessNumber+"";
 		
 		brightnessTopic.publish(new MqttMessage(brightness.getBytes()));
 		System.out.println("Data published " +brightness);
